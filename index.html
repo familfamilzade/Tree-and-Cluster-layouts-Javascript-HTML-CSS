@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>ASSIGNMENT 4</title>
+        <script type="text/javascript" src="../d3/d3.js" charset="utf-8"></script> 
+        <!-- <script type="text/javascript" src="http://d3js.org/d3.v4.js" charset="utf-8"></script>  -->
+        <style type="text/css">
+			#tooltip {
+        		position: absolute;
+        		width: 210px;
+        		height: auto;
+        		padding: 10px;
+        		background-color: Beige;
+        		border-radius: 10px;
+        		box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+        		pointer-events: none;
+		}
+		
+		.line {
+  			fill: none;
+  			stroke: steelblue;
+  			stroke-width: 1.5px;
+		}
+		
+		#linechart {
+        		position: absolute;
+        		width: 525px;
+        		height: 320px;
+        		padding: 0px;
+        		background-color: Beige;
+        		border-radius: 10px;
+        		box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+				pointer-events: none;
+        		
+		}
+		
+		#tooltip.hidden{
+			display: none;
+		}
+		
+		#linechart.hidden{
+			display: none;
+		}
+        </style>
+    </head>
+    <body>
+	<p><strong>In the cluster layout continent nodes and world node are collapsible. Clicking on a country node will show line chart.</strong></p>
+	<p><strong>Sort functions are only available for radial layout.</strong></p>
+	<div id="tooltip" class="hidden">
+        	<p><strong><span id= "pop">Population</span></strong></p>
+        	<p><strong><span id="gdp">GDP</span></strong></p>
+			<p><strong><span id="name">Name</span></strong></p>
+	</div>
+	
+	<div id="linechart" class="hidden">
+	
+	</div>
+		<form>
+	 		 Layout:
+	    		<label><input type="radio" name="layout" id="cluster" checked> Cluster</label>
+	    		<label><input type="radio" name="layout" id="radial"> Radial</label>  
+	   	 	</form>
+			
+			<form>
+	         Color:
+	    		<label><input type="radio" name="color" id="color_continent" checked> Continent</label>
+				<label><input type="radio" name="color" id="nocolor" > None</label>
+			</form>
+			
+			<form>
+	         Sort By:
+	    		<label><input type="radio" name="sort" id="sort_continent" checked> Continent</label>
+	    		<label><input type="radio" name="sort" id="sort_gdp" > GDP</label>
+				<label><input type="radio" name="sort" id="sort_population" > Population</label>
+	    	</form>
+           <script type="text/javascript">
+ 	       var w = 1000;
+		   var h = 10000;
+			var r = 400
+			
+		var europe = {"name":"Europe", "children": []}
+		var asia = {"name":"Asia", "children": []}
+		var africa = {"name":"Africa", "children": []}
+		var americas = {"name":"Americas", "children": []}
+		var oceania = {"name":"Oceania", "children": []}
+		var jsondata
+		var linedata = [
+                	[2000, 20], [2001, 90], [2002, 50], [2003, 33], [2004, 95],
+                	[2005, 12], [2006, 44], [2007, 67], [2008, 21], [2009, 88], [2010, 89], [2011, 32], [2012, 53]
+              	];
+		var dataset = {"name": "World", "children": []}
+		d3.json("countries.json", function(data) {
+            jsondata=data;
+			for(i=0; i<jsondata.length; i++){
+				var info = {}
+				info["name"] = jsondata[i].name;
+				info["gdp"] = jsondata[i].years[17].gdp;
+				info["pop"] = jsondata[i].years[17].population;
+				if(jsondata[i].continent == "Europe"){
+					europe["children"].push(info)
+				} 	
+				else if(jsondata[i].continent == "Asia"){
+					asia["children"].push(info)
+				}
+				else if(jsondata[i].continent == "Africa"){
+					africa["children"].push(info)
+				}
+				else if(jsondata[i].continent == "Americas"){
+					americas["children"].push(info)
+				}
+				else if(jsondata[i].continent == "Oceania"){
+					oceania["children"].push(info)
+				}
+				
+			}
+		var europe_pop = 0
+		var asia_pop = 0
+		var africa_pop = 0
+		var americas_pop = 0
+		var oceania_pop = 0
+		var world_pop = 0
+		
+		for(i=0; i<europe.children.length; i++){
+			europe_pop = europe_pop + europe.children[i]["pop"]
+			europe["pop"] = europe_pop
+		}
+		for(i=0; i<asia.children.length; i++){
+			asia_pop = asia_pop + asia.children[i]["pop"]
+			asia["pop"] = asia_pop
+		}
+		for(i=0; i<africa.children.length; i++){
+			africa_pop = africa_pop + africa.children[i]["pop"]
+			africa["pop"] = africa_pop
+		}
+		for(i=0; i<americas.children.length; i++){
+			americas_pop = americas_pop + americas.children[i]["pop"]
+			americas["pop"] = americas_pop
+		}
+		for(i=0; i<oceania.children.length; i++){
+			oceania_pop = oceania_pop + oceania.children[i]["pop"]
+			oceania["pop"] = oceania_pop
+		}	
+		world_pop = europe_pop+asia_pop+africa_pop+americas_pop+oceania_pop
+		
+		dataset["children"].push(europe)
+		dataset["children"].push(africa)
+		dataset["children"].push(asia)
+		dataset["children"].push(americas)
+		dataset["children"].push(oceania)
+		dataset["pop"] = world_pop
+		
+ 	      function cloneObject(obj) {
+			if (obj === null || typeof obj !== 'object') {
+				return obj;
+			}
+ 
+			var temp = obj.constructor(); 
+			for (var key in obj) {
+				temp[key] = cloneObject(obj[key]);
+			}
+ 
+			return temp;
+			}
+			
+		var radial_dataset = (cloneObject(dataset))
+
+		d3.select("#sort_continent").on("click", function(){
+			if(document.getElementById("radial").checked == true){ 		
+			radial_layout()}
+		})
+		
+		d3.select("#sort_gdp").on("click", function(){
+			for(i=0; i<radial_dataset["children"].length; i++){
+			radial_dataset["children"][i]["children"].sort(function(a, b) { 
+			return a.gdp - b.gdp;
+		})
+		}
+			
+		if(document.getElementById("radial").checked == true){ 		
+		radial_layout()}
+		})
+		
+		d3.select("#sort_population").on("click", function(){
+			for(i=0; i<radial_dataset["children"].length; i++){
+			radial_dataset["children"][i]["children"].sort(function(a, b) { 
+			return a.pop - b.pop;
+		})
+		}
+		if(document.getElementById("radial").checked == true){ 		
+		radial_layout()}
+		})
+		
+		var colorset = {"Europe": "Coral", "Asia": "DodgerBlue", "Africa": "GoldenRod", "Americas": "Red", "Oceania": "Green", "World": "Blue"}
+			
+			//create hierarchical data and  calculate size (value) for each node
+			var root=d3.hierarchy(dataset).sum(function(d) { return d.gdp  });
+
+			var tree = d3.cluster()
+				.size([3*h/4, 3*w/4 ]);
+				
+	 		function project(x, y) {
+				return [y, x];
+	 		}
+			
+ 		   function linkgen(d) {
+ 			  return "M" + project(d.source.x, d.source.y)
+ 			      + "C" + project(d.source.x,(d.source.y + d.target.y) / 2)
+ 			      + " " + project(d.target.x,(d.source.y + d.target.y) / 2)
+ 			      + " " + project(d.target.x,d.target.y);
+ 		   }
+				
+			var svg = d3.select("body")
+			   .append("svg")
+			   .attr("width", w)
+			   .attr("height", h)
+   			   .append("g")
+			   .attr("transform", "translate(" + w / 8 + "," + 0 + ")");
+					
+  			nodes = tree(root).descendants(),
+ 			links = tree(root).links();	
+			
+			//Create edges as paths
+			var link = svg.selectAll("path")
+     				.data(links)
+      				.enter()
+      				.append("path")
+      				.attr("class", "link")
+      				.attr("d", linkgen)
+					.style("stroke", "#ccc")
+					.style("stroke-width", 1.5)
+					.style("fill", "none");
+
+			//Create nodes as circles
+			var node = svg.selectAll("circle")
+				.data(nodes)
+				.enter()
+				.append("circle")
+				.attr("class", "node")
+				//.attr("r", 4)
+				.attr("r", function(d) { return d.children ? 6 : Math.sqrt(Math.sqrt(d.value))/45; })
+				.attr("cx", function(d) { return d.y; })
+				.attr("cy", function(d) { return d.x; })
+				.style("fill", function(d){
+				if(document.getElementById("color_continent").checked == true){
+					if(d.data["name"] in colorset){
+						return colorset[d.data["name"]]
+					}
+					else {
+						return colorset[d.parent.data["name"]]
+					}}
+					else{
+						return "#CCCCCC"
+					}
+				})
+				
+				.on("click", click)	
+				.on("mouseover", mouseover)
+				.on("mouseout", mouseout)
+				
+			//Create labels as text
+			var label = svg.selectAll("text")
+				.data(nodes)
+				.enter()
+				.append("text")	
+				.attr("class", "label")			
+				.attr("dx", function(d) {  return d.children ? d.y-8 : d.y + Math.sqrt(Math.sqrt(d.value))/45 + 4;  })
+				.attr("dy", function(d) { return d.x +3 ; })
+				.style("text-anchor", function(d) { return d.children ? "end" : "start"; })
+				.style("font", "10px sans-serif")
+				.text(function(d) { return d.data.name; });
+								
+			///////////////////////////////////////////////////////////////////////////////////////////////////	
+			/////////////////////////////// LINE CHART SVG ///////////////////////////////////////////////////	
+			
+			var w2 = 600;
+			var h2 = 300;
+			var padding = 20;
+
+
+			var xScale = d3.scaleLinear()           
+                       .domain([d3.min(linedata, function(d) { return d[0]; }), d3.max(linedata, function(d) { return d[0]; })])  
+               		   .range([5*padding, w2-5*padding]);
+
+			var yScale = d3.scaleLinear()           
+			           .domain([0, d3.max(linedata, function(d) { return d[1]; })])  
+			           .range([h2-padding, padding]);    
+                
+			//Define X axis
+			var xAxis = d3.axisBottom(xScale)     // a function to create an axis
+				   .ticks(linedata.length)  //Set  # of ticks
+				   .tickFormat(d3.format(".0f")) ;                
+				   
+			//Define Y axis
+			var yAxis = d3.axisLeft(yScale)
+                  	  .ticks(13);
+
+			var line = d3.line()
+      				.x(function(d) { return xScale(d[0]); })
+      				.y(function(d) { return yScale(d[1]); })
+					.curve(d3.curveBasis);
+
+			var svg2 = d3.select("div#linechart")
+            		.append("svg")
+            		.attr("width", w2)
+            		.attr("height", h2);
+	
+			//Create X axis
+			svg2.append("g")  // add a group element to the svg
+           .attr("class", "xaxis") //Assign class "axis" to group
+           .attr("transform", "translate(0," + (h2 - padding) + ")")  // transform/shift the axis to bottom
+           .call(xAxis);   // call the axis function we generated on this group. So it will create & add axis to the group
+
+			//Create Y axis
+			svg2.append("g")
+    	   .attr("class", "yaxis")
+    	   .attr("transform", "translate(" + 5*padding + ",0)")  // shift the axis to right
+    	   .call(yAxis);
+	
+			svg2.append("path")
+      	  .attr("class", "line")
+      	  .attr("d", line(linedata))
+		  
+		  svg2.append("text").attr("class", "svg2text").attr("x", 300).attr("y", 20).text("Country")
+			
+			///////////////////////////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////// MOUSEOVER /////////////////////////////////////////////////////
+			
+			function mouseover(d){
+				d3.select("#tooltip").classed("hidden", false)
+				d3.select("#tooltip").select("#pop").text("Population:	" + d.data.pop);	
+				d3.select("#tooltip").select("#gdp").text("GDP:	" + d.value)
+				d3.select("#tooltip").select("#name").text("Name: " + d.data.name)
+				d3.select("#tooltip")
+	     				.style("left", d.y+180 + "px")
+	     				.style("top", d.x + "px")
+				
+			}
+			function mouseout(d){
+				d3.select("#tooltip").classed("hidden", true)
+				d3.select("#linechart").classed("hidden", true)
+			}
+							
+			////////////////////////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////// CLICK //////////////////////////////////////////////////////
+			
+			function click(d) {
+									
+					if(!(d.data.name in colorset)){
+						linedata = [];
+						for(i=0; i<jsondata.length; i++){
+							if(jsondata[i]["name"] == d.data.name){
+								for(j=5; j<18; j++){
+									linedata.push([jsondata[i].years[j]["year"], jsondata[i].years[j]["gdp"]])
+							
+							}
+						} 
+					}
+					d3.select("#linechart").classed("hidden", false);
+					d3.select("#linechart").style("left", d.y-450 + "px")
+	     				.style("top", d.x + "px")
+					yScale.domain([d3.min(linedata, function(d) { return d[1]; }), d3.max(linedata, function(d) { return d[1]; })])
+					svg2.select(".yaxis").call(yAxis)
+					svg2.select(".line").attr("d", line(linedata))
+					svg2.select(".svg2text").text(d.data.name)
+					}
+					
+					if (d.children) {
+						
+	    				d._children = d.children;
+	   					d.children = null;
+				  
+					} else {
+							d.children = d._children;
+	    					d._children = null;
+	  				}
+ 				 
+					//make a copy of current location of all nodes so later they can stay at their  current locations
+	               nodes.forEach(function(element) {
+	  					element._x=element.x
+						element._y=element.y
+					});
+				
+				   // re-create nodes/edges after removing child of the current node	
+		   	       nodes = tree(root).descendants(),
+		   	       links = tree(root).links();	
+				   
+				   // tree layout changed the location of nodes. Move them back to the original location
+	               nodes.forEach(function(element) {
+	  					element.x=element._x
+						element.y=element._y
+					});
+			
+		
+					// re-bind the edges
+					link = svg.selectAll("path.link")
+						.data(links)
+				   	    .attr("d", linkgen);
+				
+					//Create new edges if necessary
+					link.enter()
+						.append("path")
+						.attr("class", "link")
+	      				.attr("d", linkgen)
+						.style("stroke", "#ccc")
+						.style("stroke-width", 1.5)
+						.style("fill", "none");
+
+					//Delete edges if necessart
+					link.exit()
+						.remove();
+						
+
+					// re-bind the nodes
+					node = svg.selectAll("circle.node")
+						.data(nodes)
+						.attr("cx", function(d) { return d.y; })
+						.attr("cy", function(d) { return d.x; })
+						.attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(Math.sqrt(d.value))/45; })
+						.style("fill", function(d){if(document.getElementById("color_continent").checked == true){
+					if(d.data["name"] in colorset){
+						return colorset[d.data["name"]]
+					}
+					else {
+						return colorset[d.parent.data["name"]]
+					}
+					}
+					else{
+						return "#CCCCCC"
+					}
+				}).on("click", click)	
+				.on("mouseover", mouseover)
+				.on("mouseout", mouseout);
+					
+					//remove nodes if necessary
+					node.exit()
+						.remove();
+						
+					//Create new nodes if necessary
+					node.enter()
+						.append("circle")
+						.attr("class", "node")
+						.attr("cx", function(d) { return d.y; })
+						.attr("cy", function(d) { return d.x; })
+						.attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(Math.sqrt(d.value))/45; })						
+						.style("fill", function(d){if(document.getElementById("color_continent").checked == true){
+					if(d.data["name"] in colorset){
+						return colorset[d.data["name"]]
+					}
+					else {
+						return colorset[d.parent.data["name"]]
+					}
+					}
+					else{
+						return "#CCCCCC"
+					}
+				})
+						
+	 					.on("click", click)
+						.on("mouseover", mouseover)
+						.on("mouseout", mouseout)		
+						
+
+					// re-bind the nodes
+					label = svg.selectAll("text.label")
+						.data(nodes)			
+						.attr("dx", function(d) {  return d.children ? d.y-8 : d.y + Math.sqrt(Math.sqrt(d.value))/45 + 4;  })
+						.attr("dy", function(d) { return d.x +3 ; })
+						.style("text-anchor", function(d) { return d.children ? "end" : "start"; })
+						.style("font", "10px sans-serif")
+						.text(function(d) { return d.data.name; });
+			
+					//remove labels if necessary
+					label.exit()
+						.remove();
+
+					//Create new labels if necessary
+					label.enter()
+						.append("text")	
+						.attr("dx", function(d) {  return d.children ? d.y-8 : d.y + Math.sqrt(Math.sqrt(d.value))/45 + 4;  })
+						.attr("dy", function(d) { return d.x +3 ; })
+						.style("text-anchor", function(d) { return d.children ? "end" : "start"; })
+						.style("font", "10px sans-serif")
+						.text(function(d) { return d.data.name; });
+				}
+			
+			////////////////////////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////////RADIAL LAYOUT///////////////////////////////////////////////
+			function radial_layout(){
+			if(document.getElementById("sort_continent").checked == true){
+				root=d3.hierarchy(dataset).sum(function(d) { return d.gdp  });
+			}
+			else{
+			root=d3.hierarchy(radial_dataset).sum(function(d) { return d.gdp  });
+			}
+			tree = d3.tree()
+		   	  .size([360, r ]);
+			
+		   function project(x, y) {
+				var angle = (x - 90) / 180 * Math.PI, radius = y;
+			return [radius * Math.cos(angle), radius * Math.sin(angle)];
+			}
+			
+			function linkgen2(d) {
+			  return "M" + project(d.source.x, d.source.y)
+			      + "C" + project(d.source.x,(d.source.y + d.target.y) / 2)
+			      + " " + project(d.target.x,(d.source.y + d.target.y) / 2)
+			      + " " + project(d.target.x,d.target.y);
+		   }
+						
+		   	nodes = tree(root).descendants(),
+	    	links = tree(root).links();						
+					
+			//Create edges as lines
+			svg.selectAll("circle").remove()
+			svg.selectAll("path").remove()
+			svg.selectAll("text").remove()
+			svg.append("g")
+			svg.select("g").attr("transform", "translate(" + 1*r + "," + 1.3*r + ")");
+			link = svg.select("g").selectAll("path")
+     				.data(links)
+      				.enter()
+      				.append("path")
+      				.attr("class", "link")
+      				.attr("d", linkgen2)
+					.style("stroke", "#ccc")
+					.style("stroke-width", 1.5)
+					.style("fill", "none");
+	
+			//Create nodes as circles
+			node = svg.select("g").selectAll("circle")
+				.data(nodes)
+				.enter().append("g")
+				.attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
+				.attr("transform", function(d) { return "translate(" + project(d.x, d.y) + ")"; });
+				
+				node.append("circle")
+				.attr("r", 4)
+				.style("fill", function(d){if(document.getElementById("color_continent").checked == true){
+					if(d.data["name"] in colorset){
+						return colorset[d.data["name"]]
+					}
+					else {
+						return colorset[d.parent.data["name"]]
+					}
+					}
+					else{
+						return "#CCCCCC"
+					}
+				});
+
+				node.append("text")
+				.attr("dy", ".31em")
+				.attr("x", function(d) { return d.x < 180 === !d.children ? 6 : -6; })
+				.style("text-anchor", function(d) { return d.x < 180 === !d.children ? "start" : "end"; })
+				.style("font", "10px sans-serif")
+				.attr("transform", function(d) { return "rotate(" + (d.x < 180 ? d.x - 90 : d.x + 90) + ")"; })
+				.text(function(d) { return d.data.name; })
+			
+			}
+					
+			d3.select("#radial").on("click", radial_layout)
+		
+			///////////////////////////////////CLUSTER LAYOUT/////////////////////////////////////////////////
+			
+			d3.select("#cluster").on("click", function(){
+						
+			root=d3.hierarchy(dataset).sum(function(d) { return d.gdp  });
+				tree = d3.cluster()
+				.size([3*h/4, 3*w/4 ]);
+				
+	 		function project(x, y) {
+				return [y, x];
+	 		}
+			nodes = tree(root).descendants(),
+	    	links = tree(root).links();	
+			svg.selectAll("circle").remove()
+			svg.selectAll("path").remove()
+			svg.selectAll("text").remove()
+			
+			link = svg.selectAll("path")
+     				.data(links)
+      				.enter()
+      				.append("path")
+      				.attr("class", "link")
+      				.attr("d", linkgen)
+					.style("stroke", "#ccc")
+					.style("stroke-width", 1.5)
+					.style("fill", "none");
+	
+			//Create nodes as circles
+			var link = svg.selectAll("path")
+     				.data(links)
+      				.enter()
+      				.append("path")
+      				.attr("class", "link")
+      				.attr("d", linkgen)
+					.style("stroke", "#ccc")
+					.style("stroke-width", 1.5)
+					.style("fill", "none");
+					
+
+			//Create nodes as circles
+			var node = svg.selectAll("circle")
+				.data(nodes)
+				.enter()
+				.append("circle")
+				.attr("class", "node")
+				//.attr("r", 4)
+				.attr("r", function(d) { return d.children ? 6 : Math.sqrt(Math.sqrt(d.value))/45; })
+				.attr("cx", function(d) { return d.y; })
+				.attr("cy", function(d) { return d.x; })
+				.style("fill", function(d){
+				if(document.getElementById("color_continent").checked == true){
+					if(d.data["name"] in colorset){
+						return colorset[d.data["name"]]
+					}
+					else {
+						return colorset[d.parent.data["name"]]
+					}}
+					else{
+						return "#CCCCCC"
+					}
+				})
+				
+				.on("click", click)	
+				.on("mouseover", mouseover)
+				.on("mouseout", mouseout)
+				
+			//Create labels as text
+			var label = svg.selectAll("text")
+				.data(nodes)
+				.enter()
+				.append("text")	
+				.attr("class", "label")			
+				.attr("dx", function(d) {  return d.children ? d.y-8 : d.y + Math.sqrt(Math.sqrt(d.value))/45 + 4;  })
+				.attr("dy", function(d) { return d.x +3 ; })
+				.style("text-anchor", function(d) { return d.children ? "end" : "start"; })
+				.style("font", "10px sans-serif")
+				.text(function(d) { return d.data.name; });
+				
+			
+			})
+			
+			///////////////////////////////////////// COLOR OPTIONS //////////////////////////////////////////
+			//////////////////////////////////////////////////////////////////////////////////////////////////
+			
+			d3.select("#nocolor").on("click", function(){
+				svg.selectAll("circle").style("fill", "#CCCCCC")
+			})	
+			d3.select("#color_continent").on("click", function(){
+				svg.selectAll("circle").style("fill", function(d){
+					if(d.data["name"] in colorset){
+						return colorset[d.data["name"]]
+					}
+					else {
+						return colorset[d.parent.data["name"]]
+					}
+				})
+			})
+		})
+        </script>
+    </body>
+</html>
